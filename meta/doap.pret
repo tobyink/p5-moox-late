@@ -1,0 +1,18 @@
+# This file contains general metadata about the project.
+
+@prefix : <http://usefulinc.com/ns/doap#>.
+
+`MooX-late`
+	:programming-language "Perl" ;
+	:shortdesc            "easily translate Moose code to Moo";
+	:homepage             <https://metacpan.org/release/MooX-late>;
+	:download-page        <https://metacpan.org/release/MooX-late>;
+	:bug-database         <http://rt.cpan.org/Dist/Display.html?Queue=MooX-late>;
+	:created              2012-11-30;
+	:license              <http://dev.perl.org/licenses/>;
+	:maintainer           cpan:TOBYINK;
+	:developer            cpan:TOBYINK.
+
+<http://dev.perl.org/licenses/>
+	dc:title  "the same terms as the perl 5 programming language system itself".
+
