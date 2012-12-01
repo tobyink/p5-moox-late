@@ -56,9 +56,9 @@ sub import
 			return $orig->($name, %spec);
 		},
 	);
-
+	
 	$install_tracked->($caller, blessed => \&Scalar::Util::blessed);
-	$install_tracked->($caller, confess => \&Carp::confess);	
+	$install_tracked->($caller, confess => \&Carp::confess);
 }
 
 sub _process_isa
@@ -116,7 +116,7 @@ sub _process_lazy_build
 		my $type_with_parameter_pattern  = q{  (?&type_atom)      \[ (?&ws)  (?&any)  (?&ws) \]    };
 		my $union_pattern   = q{ (?&type) (?> (?: (?&op_union) (?&type) )+ ) };
 		my $any_pattern     = q{ (?&type) | (?&union) };
-
+		
 		my $defines = qr{(?(DEFINE)
 			(?<valid_chars>         $valid_chars)
 			(?<type_atom>           $type_atom)
@@ -128,7 +128,7 @@ sub _process_lazy_build
 			(?<union>               $union_pattern)
 			(?<any>                 $any_pattern)
 		)}x;
-
+		
 		$type                = qr{ $type_pattern                $defines }x;
 		$type_capture_parts  = qr{ $type_capture_parts_pattern  $defines }x;
 		$type_with_parameter = qr{ $type_with_parameter_pattern $defines }x;
@@ -143,18 +143,18 @@ sub _process_lazy_build
 		$union               = qr{ $type (?> (?: $op_union $type )+ ) }x;
 		$any                 = qr{ $type | $union }x;
 	}
-
+	
 	sub _parse_parameterized_type_constraint {
 		{ no warnings 'void'; $any; }  # force capture of interpolated lexical
 		$_[0] =~ m{ $type_capture_parts }x;
 		return ( $1, $2 );
 	}
-
+	
 	sub _detect_parameterized_type_constraint {
 		{ no warnings 'void'; $any; }  # force capture of interpolated lexical
 		$_[0] =~ m{ ^ $type_with_parameter $ }x;
 	}
-
+	
 	sub _parse_type_constraint_union {
 		{ no warnings 'void'; $any; }  # force capture of interpolated lexical
 		my $given = shift;
@@ -170,7 +170,7 @@ sub _process_lazy_build
 			. ")" );
 		@rv;
 	}
-
+	
 	sub _detect_type_constraint_union {
 		{ no warnings 'void'; $any; }  # force capture of interpolated lexical
 		$_[0] =~ m{^ $type $op_union $type ( $op_union .* )? $}x;
@@ -212,7 +212,7 @@ sub _process_lazy_build
 				RoleName  => sub { is_module_name($_[0]) },
 			}->{$1};
 		}
-
+		
 		if (_detect_type_constraint_union($tc))
 		{
 			my @isa =
