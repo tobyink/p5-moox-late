@@ -319,9 +319,9 @@ MooX::late does the following:
 
 =item 1.
 
-Allows C<< isa => $type_constraint_string >> to work when defining attributes
-for all Moose's built-in type constraints (and assumes other strings are
-package names).
+Allows C<< isa => $string >> to work when defining attributes for all
+Moose's built-in type constraints (and assumes other strings are package
+names).
 
 =item 2.
 
@@ -340,7 +340,8 @@ Exports C<blessed> and C<confess> functions to your namespace.
 
 Four features. It is not the aim of C<MooX::late> to make every aspect of
 Moo behave exactly identically to Moose. It's just going after the low-hanging
-fruit.
+fruit. So it does four things right now, and I promise that future versions
+will never do more than seven.
 
 =head1 BUGS
 
@@ -362,6 +363,10 @@ L<MooX::Override> - support override/super
 L<MooX::Augment> - support augment/inner
 
 =back
+
+If you have L<MooX> then you can import them all at once using:
+
+	use MooX qw( late Override Augment );
 
 =head1 AUTHOR
 
