@@ -4,6 +4,8 @@
 	perl_version_from m`MooX::late`;
 	version_from      m`MooX::late`;
 	readme_from       m`MooX::late`;
-	test_requires     p`Test::More 0.61` ;
-	.
+	test_requires     p`Test::More 0.61`;
+	requires          p`Moo 1.000000`;
+	recommends        p`MooX`;
+.
 
