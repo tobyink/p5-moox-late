@@ -208,7 +208,10 @@ sub _process_lazy_build
 				CodeRef   => sub { ref($_[0]) eq 'CODE' },
 				RegexpRef => sub { ref($_[0]) eq 'Regexp' },
 				GlobRef   => sub { ref($_[0]) eq 'GLOB' },
-				FileHandle=> sub { Scalar::Util::openhandle($_[0]) or blessed($_[0]) && $_[0]->isa('IO::Handle') },
+				FileHandle=> sub {
+					Scalar::Util::openhandle($_[0]) or
+					blessed($_[0]) && $_[0]->isa('IO::Handle');
+				},
 				Object    => sub { blessed($_[0]) },
 				ClassName => sub { is_module_name($_[0]) },
 				RoleName  => sub { is_module_name($_[0]) },
@@ -241,6 +244,13 @@ sub _process_lazy_build
 			{
 				return sub { !defined($_[0]) or $inner->($_[0]) };
 			}
+			if ($outer eq 'ScalarRef')
+			{
+				return sub {
+					return unless ref $_[0] eq 'SCALAR';
+					$inner->(${$_[0]});
+				};
+			}
 			if ($outer eq 'ArrayRef')
 			{
 				return sub {
@@ -261,6 +271,8 @@ sub _process_lazy_build
 					return 1;
 				};
 			}
+			
+			return sub { 1 };
 		}
 		
 		if (is_module_name($tc))
@@ -273,9 +285,17 @@ sub _process_lazy_build
 	
 	sub _fatal_type_constraint
 	{
-		my $tc = _type_constraint(my $tc_name = shift);
-		return sub { 1 } unless $tc;
-		return sub { $tc->($_[0]) or die "value '$_[0]' is not a $tc_name" };
+		my $tc    = _type_constraint(my $tc_name = shift);
+		my $fatal = $tc
+			? sub { $tc->($_[0]) or die "value '$_[0]' is not a $tc_name" }
+			: sub { 1 };
+		
+		# For inflation
+		$Moo::HandleMoose::TYPE_MAP{$fatal} = sub {
+			Moose::Util::TypeConstraints::find_or_parse_type_constraint($tc_name)
+		};
+		
+		return $fatal;
 	}
 }
 
