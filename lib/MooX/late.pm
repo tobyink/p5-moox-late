@@ -186,7 +186,7 @@ sub _process_lazy_build
 		if ($tc =~ /^(
 			Any|Item|Bool|Undef|Defined|Value|Str|Num|Int|
 			Ref|CodeRef|RegexpRef|GlobRef|FileHandle|Object|
-			ArrayRef|HashRef
+			ArrayRef|HashRef|ClassName|RoleName
 		)$/x)
 		{
 			return {
