@@ -99,10 +99,7 @@ sub _process_lazy_build
 	return;
 }
 
-# A bunch of stuff stolen from Moose::Util::TypeConstraints and
-# MooX::Types::MooseLike::Base. I would have liked to have used
-# MX:T:ML:B directly, but couldn't persuade it to play ball.
-#
+# A bunch of stuff stolen from Moose::Util::TypeConstraints...
 {
 	my $valid_chars = qr{[\w:\.]};
 	my $type_atom   = qr{ (?>$valid_chars+) }x;
@@ -385,6 +382,10 @@ Please report any bugs to
 L<http://rt.cpan.org/Dist/Display.html?Queue=MooX-late>.
 
 =head1 SEE ALSO
+
+C<MooX::late> uses L<MooX::Types::MooseLike::Base> to check many type
+constraints. This is an optional dependency, but without it most type
+constraints are ignored.
 
 The following modules bring additional Moose functionality to Moo:
 
