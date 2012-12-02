@@ -9,3 +9,12 @@
 	changeset [
 		item "use re 'eval' on Perl 5.8 to fix regexp compilation problem"^^Bugfix;
 	].
+
+`MooX-late 0.003 cpan:TOBYINK`
+	issued  2012-12-02;
+	changeset [
+		item "Inflation of type constraints to Moose."^^Addition;
+		item "Use MooX::Types::MooseLike::Base for type checks."^^Change;
+		item "General refactoring of type constraint code."^^Change;
+	].
+
