@@ -178,121 +178,136 @@ sub _process_lazy_build
 		$_[0] =~ m{^ $type $op_union $type ( $op_union .* )? $}x;
 	}
 	
+	sub _get_simple_type_constraint
+	{
+		my $tc = shift;
+		return {
+			Any       => sub { 1 },
+			Item      => sub { 1 },
+			Undef     => sub { !defined $_[0] },
+			Defined   => sub {  defined $_[0] },
+			Value     => sub { !ref $_[0] },
+			Bool      => sub {
+				return 1 unless defined $_[0];
+				!ref($_[0]) and $_[0]=~ /^(0|1|)$/;
+			},
+			Str       => sub { ref(\$_[0]) eq 'SCALAR' },
+			Num       => sub { Scalar::Util::looks_like_number($_[0]) },
+			Int       => sub { "$_[0]" =~ /^-?[0-9]+$/x },
+			ScalarRef => sub { ref($_[0]) eq 'SCALAR' },
+			ArrayRef  => sub { ref($_[0]) eq 'ARRAY' },
+			HashRef   => sub { ref($_[0]) eq 'HASH' },
+			CodeRef   => sub { ref($_[0]) eq 'CODE' },
+			RegexpRef => sub { ref($_[0]) eq 'Regexp' },
+			GlobRef   => sub { ref($_[0]) eq 'GLOB' },
+			FileHandle=> sub {
+				Scalar::Util::openhandle($_[0]) or
+				blessed($_[0]) && $_[0]->isa('IO::Handle');
+			},
+			Object    => sub { blessed($_[0]) },
+			ClassName => sub { is_module_name($_[0]) },
+			RoleName  => sub { is_module_name($_[0]) },
+		}->{$tc} or sub { 1 };
+	}
+
+	sub _get_type_constraint_union
+	{
+		my @tc =
+			grep defined,
+			map { _type_constraint($_) }
+			_parse_type_constraint_union($_[0]);
+		
+		return sub {
+			my $value = shift;
+			foreach my $x (@tc) {
+				return 1 if eval { $x->($value) };
+			}
+			return;
+		};
+	}
+	
+	sub _get_parameterized_type_constraint
+	{
+		my ($outer, $inner) = _parse_parameterized_type_constraint($_[0]);
+		$inner = _type_constraint($inner);
+		
+		if ($outer eq 'Maybe')
+		{
+			return sub { !defined($_[0]) or $inner->($_[0]) };
+		}
+		
+		if ($outer eq 'ScalarRef')
+		{
+			return sub {
+				return unless ref $_[0] eq 'SCALAR';
+				$inner->(${$_[0]});
+			};
+		}
+		
+		if ($outer eq 'ArrayRef')
+		{
+			return sub {
+				return unless ref $_[0] eq 'ARRAY';
+				foreach my $e (@{$_[0]}) {
+					$inner->($e) or return;
+				}
+				return 1;
+			};
+		}
+		
+		if ($outer eq 'HashRef')
+		{
+			return sub {
+				return unless ref $_[0] eq 'HASH';
+				foreach my $e (values %{$_[0]}) {
+					return unless $inner->($e);
+				}
+				return 1;
+			};
+		}
+		
+		return sub { 1 };
+	}
+
 	sub _type_constraint
 	{
 		my $tc = shift;
 		$tc =~ s/(^\s+|\s+$)//g;
 		
-		if ($tc =~ /^(
+		$tc =~ /^(
 			Any|Item|Bool|Undef|Defined|Value|Str|Num|Int|
 			Ref|CodeRef|RegexpRef|GlobRef|FileHandle|Object|
-			ArrayRef|HashRef|ClassName|RoleName
-		)$/x)
-		{
-			return {
-				Any       => sub { 1 },
-				Item      => sub { 1 },
-				Undef     => sub { !defined $_[0] },
-				Defined   => sub {  defined $_[0] },
-				Value     => sub { !ref $_[0] },
-				Bool      => sub {
-					return 1 unless defined $_[0];
-					!ref($_[0]) and $_[0]=~ /^(0|1|)$/;
-				},
-				Str       => sub { ref(\$_[0]) eq 'SCALAR' },
-				Num       => sub { Scalar::Util::looks_like_number($_[0]) },
-				Int       => sub { "$_[0]" =~ /^-?[0-9]+$/x },
-				ScalarRef => sub { ref($_[0]) eq 'SCALAR' },
-				ArrayRef  => sub { ref($_[0]) eq 'ARRAY' },
-				HashRef   => sub { ref($_[0]) eq 'HASH' },
-				CodeRef   => sub { ref($_[0]) eq 'CODE' },
-				RegexpRef => sub { ref($_[0]) eq 'Regexp' },
-				GlobRef   => sub { ref($_[0]) eq 'GLOB' },
-				FileHandle=> sub {
-					Scalar::Util::openhandle($_[0]) or
-					blessed($_[0]) && $_[0]->isa('IO::Handle');
-				},
-				Object    => sub { blessed($_[0]) },
-				ClassName => sub { is_module_name($_[0]) },
-				RoleName  => sub { is_module_name($_[0]) },
-			}->{$1};
-		}
+			ScalarRef|ArrayRef|HashRef|ClassName|RoleName
+		)$/x
+			and return _get_simple_type_constraint($1);
 		
-		if (_detect_type_constraint_union($tc))
-		{
-			my @isa =
-				grep defined,
-				map { _type_constraint($_) }
-				_parse_type_constraint_union($tc);
-			
-			return sub {
-				my $value = shift;
-				foreach my $isa (@isa) {
-					return 1 if eval { $isa->($value) };
-				}
-				return;
-			};
-		}
+		_detect_type_constraint_union($tc)
+			and return _get_type_constraint_union($tc);
 		
-		if (_detect_parameterized_type_constraint($tc))
-		{
-			my ($outer, $inner) =
-				_parse_parameterized_type_constraint($tc);
-			$inner = _type_constraint($inner);
-			
-			if ($outer eq 'Maybe')
-			{
-				return sub { !defined($_[0]) or $inner->($_[0]) };
-			}
-			if ($outer eq 'ScalarRef')
-			{
-				return sub {
-					return unless ref $_[0] eq 'SCALAR';
-					$inner->(${$_[0]});
-				};
-			}
-			if ($outer eq 'ArrayRef')
-			{
-				return sub {
-					return unless ref $_[0] eq 'ARRAY';
-					foreach my $e (@{$_[0]}) {
-						$inner->($e) or return;
-					}
-					return 1;
-				};
-			}
-			if ($outer eq 'HashRef')
-			{
-				return sub {
-					return unless ref $_[0] eq 'HASH';
-					foreach my $e (values %{$_[0]}) {
-						return unless $inner->($e);
-					}
-					return 1;
-				};
-			}
-			
-			return sub { 1 };
-		}
+		_detect_parameterized_type_constraint($tc)
+			and return _get_parameterized_type_constraint($tc);
 		
-		if (is_module_name($tc))
-		{
-			return sub { blessed($_[0]) and $_[0]->isa($tc) };
-		}
+		is_module_name($tc)
+			and return sub { blessed($_[0]) and $_[0]->isa($tc) };
 		
-		return;
+		return sub { 1 };
 	}
 	
+	my %Cache;
 	sub _fatal_type_constraint
 	{
 		my $tc    = _type_constraint(my $tc_name = shift);
-		my $fatal = $tc
-			? sub { $tc->($_[0]) or die "value '$_[0]' is not a $tc_name" }
-			: sub { 1 };
+		
+		my $fatal = (
+			$Cache{$tc_name} ||= sub {
+				$tc->($_[0]) or
+				croak "value '$_[0]' is not a $tc_name"
+			}
+		);
 		
 		# For inflation
 		$Moo::HandleMoose::TYPE_MAP{$fatal} = sub {
-			Moose::Util::TypeConstraints::find_or_parse_type_constraint($tc_name)
+			Moose::Util::TypeConstraints::find_or_parse_type_constraint $tc_name
 		};
 		
 		return $fatal;
