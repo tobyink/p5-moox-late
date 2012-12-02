@@ -10,7 +10,7 @@ use Module::Runtime  qw( is_module_name );
 
 BEGIN {
 	$MooX::late::AUTHORITY = 'cpan:TOBYINK';
-	$MooX::late::VERSION   = '0.001';
+	$MooX::late::VERSION   = '0.002';
 }
 
 sub import
@@ -137,6 +137,8 @@ sub _process_lazy_build
 	}
 	else
 	{
+		use re 'eval';
+		
 		$type                = qr{  $type_atom  (?: \[ $ws  (??{$any})  $ws \] )? }x;
 		$type_capture_parts  = qr{ ($type_atom) (?: \[ $ws ((??{$any})) $ws \] )? }x;
 		$type_with_parameter = qr{  $type_atom      \[ $ws  (??{$any})  $ws \]    }x;
