@@ -25,8 +25,15 @@ my $o2 = Local::Class->new(foo => 'bar', bar => 'foo');
 is($o2->foo, 'bar');
 is($o2->bar, 'foo');
 
-ok !eval { Local::Class->new(foo => []) };
-ok !eval { Local::Class->new(bar => []) };
+ok not eval {
+	require MooX::Types::MooseLike::Base;
+	Local::Class->new(foo => []);
+};
+
+ok not eval {
+	require MooX::Types::MooseLike::Base;
+	Local::Class->new(bar => []);
+};
 
 {
 	package Local::Other;

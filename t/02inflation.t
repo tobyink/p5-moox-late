@@ -10,6 +10,7 @@ BEGIN {
 };
 
 ok not eval {
+	require MooX::Types::MooseLike::Base;
 	my $obj = Local::Class->new(foo => [])
 };
 
