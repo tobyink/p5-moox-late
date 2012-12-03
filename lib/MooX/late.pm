@@ -10,7 +10,7 @@ use Module::Runtime  qw( is_module_name );
 
 BEGIN {
 	$MooX::late::AUTHORITY = 'cpan:TOBYINK';
-	$MooX::late::VERSION   = '0.003';
+	$MooX::late::VERSION   = '0.004';
 };
 
 BEGIN {

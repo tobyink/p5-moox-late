@@ -18,3 +18,9 @@
 		item "General refactoring of type constraint code."^^Change;
 	].
 
+`MooX-late 0.004 cpan:TOBYINK`
+	issued  2012-12-03;
+	changeset [
+		item "Issue warnings when type constraint cannot be interpreted correctly. Warning is not issued at the time the attribute is built, but the first time the type constraint is checked against. Don't attempt to inflate these type constraints when Moose is loaded."^^Addition;
+	].
+
