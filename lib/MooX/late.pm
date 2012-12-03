@@ -11,7 +11,45 @@ use Module::Runtime  qw( is_module_name );
 BEGIN {
 	$MooX::late::AUTHORITY = 'cpan:TOBYINK';
 	$MooX::late::VERSION   = '0.003';
-}
+};
+
+BEGIN {
+	package MooX::late::DefinitionContext;
+	use Moo;
+	use overload (
+		q[""]    => 'to_string',
+		q[bool]  => sub { 1 },
+		fallback => 1,
+	);
+	
+	has package  => (is => 'ro');
+	has filename => (is => 'ro');
+	has line     => (is => 'ro');
+	
+	sub to_string
+	{
+		my $self = shift;
+		sprintf(
+			'%s:%d, package %s',
+			$self->filename,
+			$self->line,
+			$self->package,
+		);
+	}
+	
+	sub new_from_caller
+	{
+		my ($class, $level) = @_;
+		$level = 0 unless defined $level;
+		
+		my ($p, $f, $c) = caller($level + 1);
+		return $class->new(
+			package  => $p,
+			filename => $f,
+			line     => $c,
+		);
+	}
+};
 
 sub import
 {
@@ -36,7 +74,7 @@ sub import
 		}
 	}
 	
-	my $orig = $caller->can('has')
+	my $orig = $caller->can('has')  # lolcat
 		or croak "Could not locate 'has' function to alter";
 	
 	$install_tracked->(
@@ -44,13 +82,15 @@ sub import
 		{
 			my ($name, %spec) = @_;
 			
-			$me->_process_isa($name, \%spec)
+			my $context = "MooX::late::DefinitionContext"->new_from_caller(0);
+			
+			$me->_process_isa($name, \%spec, $context)
 				if exists $spec{isa} && !ref $spec{isa};
 			
-			$me->_process_default($name, \%spec)
+			$me->_process_default($name, \%spec, $context)
 				if exists $spec{default} && !ref $spec{default};
 			
-			$me->_process_lazy_build($name, \%spec)
+			$me->_process_lazy_build($name, \%spec, $context)
 				if exists $spec{lazy_build} && $spec{lazy_build};
 			
 			return $orig->($name, %spec);
@@ -63,14 +103,14 @@ sub import
 
 sub _process_isa
 {
-	my ($me, $name, $spec) = @_;
-	$spec->{isa} = _fatal_type_constraint($spec->{isa});
+	my ($me, $name, $spec, $context) = @_;
+	$spec->{isa} = _fatal_type_constraint($spec->{isa}, $context);
 	return;
 }
 
 sub _process_default
 {
-	my ($me, $name, $spec) = @_;
+	my ($me, $name, $spec, $context) = @_;
 	my $value = $spec->{default};
 	$spec->{default} = sub { $value };
 	return;
@@ -78,7 +118,7 @@ sub _process_default
 
 sub _process_lazy_build
 {
-	my ($me, $name, $spec) = @_;
+	my ($me, $name, $spec, $context) = @_;
 	delete $spec->{lazy_build};
 	
 	$spec->{is}      ||= "ro";
@@ -175,6 +215,15 @@ sub _process_lazy_build
 		$_[0] =~ m{^ $type $op_union $type ( $op_union .* )? $}x;
 	}
 	
+	our $returned_empty_handed;
+	sub _empty_handed
+	{
+		$returned_empty_handed++;
+		
+		my $tc = shift;
+		return sub { 1 };
+	}
+	
 	my $warned = 0;
 	sub _get_simple_type_constraint
 	{
@@ -184,7 +233,7 @@ sub _process_lazy_build
 		or do {
 			carp "Use of isa => STRING requires MooX::Types::MooseLike::Base"
 				unless $warned++;
-			return sub { 1 };
+			return _empty_handed($_[0]);
 		};
 		
 		my $tc = shift;
@@ -199,7 +248,7 @@ sub _process_lazy_build
 				CodeRef RegexpRef GlobRef FileHandle Object
 				ArrayRef HashRef ScalarRef
 			}
-		}->{$tc} or sub { 1 };
+		}->{$tc} or _empty_handed($tc);
 	}
 
 	sub _get_type_constraint_union
@@ -212,7 +261,7 @@ sub _process_lazy_build
 		return sub {
 			my $value = shift;
 			foreach my $x (@tc) {
-				return 1 if eval { $x->($value) };
+				return 1 if $x->($value);
 			}
 			return;
 		};
@@ -258,7 +307,7 @@ sub _process_lazy_build
 			};
 		}
 		
-		return sub { 1 };
+		return _empty_handed($_[0]);
 	}
 
 	sub _type_constraint
@@ -282,13 +331,28 @@ sub _process_lazy_build
 		is_module_name($tc)
 			and return sub { blessed($_[0]) and $_[0]->isa($tc) };
 		
-		return sub { 1 };
+		return _empty_handed($tc);
 	}
 	
 	my %Cache;
 	sub _fatal_type_constraint
 	{
-		my $tc    = _type_constraint(my $tc_name = shift);
+		my ($tc_name, $context) = @_;
+		
+		$returned_empty_handed = 0;
+		my $tc = _type_constraint($tc_name);
+		
+		if ($returned_empty_handed) {
+			# Don't cache; don't inflate
+			my $warned;
+			return sub {
+				unless ($warned) {
+					carp "Type constraint '$tc_name' not fully enforced (defined at $context)";
+					$warned++;
+				}
+				$tc->($_[0]) or croak "value '$_[0]' is not a $tc_name";
+			}
+		}
 		
 		my $fatal = (
 			$Cache{$tc_name} ||= sub {
