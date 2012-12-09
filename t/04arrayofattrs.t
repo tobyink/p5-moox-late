@@ -28,3 +28,24 @@ is($o1->bar1, 'bar1');
 is($o1->bar2, 'bar2');
 
 done_testing;
+
+=head1 PURPOSE
+
+Test that this works:
+
+	has \@attributes => (...);
+
+Specifically we test is for C<lazy_build> as that's a kinda interesting
+one.
+
+=head1 AUTHOR
+
+Toby Inkster E<lt>tobyink@cpan.orgE<gt>.
+
+=head1 COPYRIGHT AND LICENCE
+
+This software is copyright (c) 2012 by Toby Inkster.
+
+This is free software; you can redistribute it and/or modify it under
+the same terms as the Perl 5 programming language system itself.
+
