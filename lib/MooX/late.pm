@@ -1,20 +1,21 @@
-package MooX::late;
-
 use 5.008;
 use strict;
 use warnings;
+
+package MooX::late;
+our AUTHORITY = 'cpan:TOBYINK';
+our VERSION   = '0.005';
+
 use Moo              qw( );
 use Carp             qw( carp croak );
 use Scalar::Util     qw( blessed );
 use Module::Runtime  qw( is_module_name );
 
 BEGIN {
-	$MooX::late::AUTHORITY = 'cpan:TOBYINK';
-	$MooX::late::VERSION   = '0.004';
-};
-
-BEGIN {
 	package MooX::late::DefinitionContext;
+	our AUTHORITY = 'cpan:TOBYINK';
+	our VERSION   = '0.005';
+	
 	use Moo;
 	use overload (
 		q[""]    => 'to_string',
@@ -80,20 +81,22 @@ sub import
 	$install_tracked->(
 		$caller, has => sub
 		{
-			my ($name, %spec) = @_;
-			
+			my ($proto, %spec) = @_;
 			my $context = "MooX::late::DefinitionContext"->new_from_caller(0);
 			
-			$me->_process_isa($name, \%spec, $context)
-				if exists $spec{isa} && !ref $spec{isa};
-			
-			$me->_process_default($name, \%spec, $context)
-				if exists $spec{default} && !ref $spec{default};
-			
-			$me->_process_lazy_build($name, \%spec, $context)
-				if exists $spec{lazy_build} && $spec{lazy_build};
-			
-			return $orig->($name, %spec);
+			for my $name (ref $proto ? @$proto : $proto)
+			{
+				my $spec = +{ %spec }; # shallow clone
+				$me->_process_isa($name, $spec, $context)
+					if exists $spec->{isa} && !ref $spec->{isa};
+				$me->_process_default($name, $spec, $context)
+					if exists $spec->{default} && !ref $spec->{default};
+				$me->_process_lazy_build($name, $spec, $context)
+					if exists $spec->{lazy_build} && $spec->{lazy_build};
+				
+				$orig->($name, %$spec);
+			}
+			return;
 		},
 	);
 	
