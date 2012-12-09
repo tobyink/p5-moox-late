@@ -28,6 +28,7 @@
 	issued  2012-12-09;
 	changeset [
 		item "Bump required version of Moo to 1.000004."^^Packaging;
+		item "Document test suite."^^Documentation;
 		item "Cope with has \@attributes => (...)."^^Bugfix;
 	].
 
