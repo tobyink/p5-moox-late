@@ -32,3 +32,9 @@
 		item "Cope with has \@attributes => (...)."^^Bugfix;
 	].
 
+`MooX-late 0.006 cpan:TOBYINK`
+	issued  2012-12-11;
+	changeset [
+		item "Skip t/02inflation.t if no MooX::Types::MooseLike::Base."^^Bugfix;
+	].
+
