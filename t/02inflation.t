@@ -3,6 +3,11 @@ use warnings;
 use Test::More;
 
 BEGIN {
+	eval { require MooX::Types::MooseLike::Base }
+		or plan skip_all => 'requires MooX::Types::MooseLike::Base'
+};
+
+BEGIN {
 	package Local::Class;
 	use Moo;
 	use MooX::late;
@@ -30,6 +35,8 @@ done_testing;
 
 Check that our type constraints are correctly inflated to Moose type
 constraints.
+
+This test is skipped if L<MooX::Types::MooseLike::Base> is unavailable.
 
 =head1 AUTHOR
 
