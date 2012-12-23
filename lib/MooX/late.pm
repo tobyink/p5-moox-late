@@ -394,6 +394,17 @@ or, without L<MooX>:
 	use MooX::late;
 	has bar => (is => 'ro', isa => 'Str');
 
+or, for MooX::Role:
+
+    package MyRole;
+    use MooX::Role qw(late);
+
+or, inside L<Package::Variant>:
+
+    use Package::Variant
+        importing => ['MooX::Role' => ['late'],],
+        subs => [ qw(has with) ];
+
 =head1 DESCRIPTION
 
 L<Moo> is a light-weight object oriented programming framework which aims
