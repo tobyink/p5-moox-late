@@ -394,16 +394,7 @@ or, without L<MooX>:
 	use MooX::late;
 	has bar => (is => 'ro', isa => 'Str');
 
-or, for MooX::Role:
-
-    package MyRole;
-    use MooX::Role qw(late);
-
-or, inside L<Package::Variant>:
-
-    use Package::Variant
-        importing => ['MooX::Role' => ['late'],],
-        subs => [ qw(has with) ];
+(Examples for Moo roles in section below.)
 
 =head1 DESCRIPTION
 
@@ -453,6 +444,27 @@ Four features. It is not the aim of C<MooX::late> to make every aspect of
 Moo behave exactly identically to Moose. It's just going after the low-hanging
 fruit. So it does four things right now, and I promise that future versions
 will never do more than seven.
+
+=head2 Use in Moo::Roles
+
+MooX::late should work in Moo::Roles, with no particular caveats.
+
+	package MyRole;
+	use MooX::Role qw(late);
+
+or, without L<MooX>:
+
+	package MyRole;
+	use Moo::Role;
+	use MooX::late;
+
+L<Package::Variant> can be used to build the Moo equivalent of
+parameterized roles. MooX::late should work in roles built with
+Package::Variant.
+
+	use Package::Variant
+		importing => ['MooX::Role' => ['late']],
+		subs      => [ qw(has with) ];
 
 =head1 BUGS
 
