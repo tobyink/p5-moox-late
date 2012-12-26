@@ -46,7 +46,7 @@
 			label "Documentation for use with Moo::Role.";
 			dcs:thanks cpan:SHLOMIF;
 			seealso <https://bitbucket.org/tobyink/p5-moox-late/pull-request/1/-/diff>;
-		].
+		];
 		item "Link to MooX::HandlesVia on github."^^Documentation;
 	].
 
