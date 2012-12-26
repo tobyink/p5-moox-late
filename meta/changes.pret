@@ -38,3 +38,15 @@
 		item "Skip t/02inflation.t if no MooX::Types::MooseLike::Base."^^Bugfix;
 	].
 
+`MooX-late 0.007 cpan:TOBYINK`
+	issued  2012-12-26;
+	changeset [
+		item [
+			a dcs:Documentation;
+			label "Documentation for use with Moo::Role.";
+			dcs:thanks cpan:SHLOMIF;
+			seealso <https://bitbucket.org/tobyink/p5-moox-late/pull-request/1/-/diff>;
+		].
+		item "Link to MooX::HandlesVia on github."^^Documentation;
+	].
+
