@@ -495,6 +495,10 @@ If you have L<MooX> then you can import them all at once using:
 
 	use MooX qw( late Override Augment );
 
+L<MooX::HandlesVia|https://github.com/mattp-/MooX-HandlesVia> is also in
+development, and once released MooX::late may be able to use it to add
+a native-traits-like feature.
+
 =head1 AUTHOR
 
 Toby Inkster E<lt>tobyink@cpan.orgE<gt>.
