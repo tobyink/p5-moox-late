@@ -450,7 +450,7 @@ will never do more than seven.
 MooX::late should work in Moo::Roles, with no particular caveats.
 
 	package MyRole;
-	use MooX::Role qw(late);
+	use MooX::Role 'late';
 
 or, without L<MooX>:
 
