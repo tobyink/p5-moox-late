@@ -50,3 +50,10 @@
 		item "Link to MooX::HandlesVia on github."^^Documentation;
 	].
 
+`MooX-late 0.007 cpan:TOBYINK`
+	issued  2013-03-11;
+	changeset [
+		item "Minor documentation updates."^^Documentation;
+		item "Make MooX::Types::MooseLike::Base a required dependency (was optional)."^^Packaging;
+	].
+
