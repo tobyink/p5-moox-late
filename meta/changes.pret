@@ -50,7 +50,7 @@
 		item "Link to MooX::HandlesVia on github."^^Documentation;
 	].
 
-`MooX-late 0.007 cpan:TOBYINK`
+`MooX-late 0.008 cpan:TOBYINK`
 	issued  2013-03-11;
 	changeset [
 		item "Minor documentation updates."^^Documentation;
