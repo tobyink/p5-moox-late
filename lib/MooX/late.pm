@@ -383,16 +383,10 @@ MooX::late - easily translate Moose code to Moo
 
 =head1 SYNOPSIS
 
-	package Foo;
-	use MooX 'late';
-	has bar => (is => 'ro', isa => 'Str');
-
-or, without L<MooX>:
-
-	package Foo;
-	use Moo;
-	use MooX::late;
-	has bar => (is => 'ro', isa => 'Str');
+   package Foo;
+   use Moo;
+   use MooX::late;
+   has bar => (is => "ro", isa => "Str", default => "MacLaren's Pub");
 
 (Examples for Moo roles in section below.)
 
@@ -449,22 +443,17 @@ will never do more than seven.
 
 MooX::late should work in Moo::Roles, with no particular caveats.
 
-	package MyRole;
-	use MooX::Role 'late';
-
-or, without L<MooX>:
-
-	package MyRole;
-	use Moo::Role;
-	use MooX::late;
+   package MyRole;
+   use Moo::Role;
+   use MooX::late;
 
 L<Package::Variant> can be used to build the Moo equivalent of
 parameterized roles. MooX::late should work in roles built with
 Package::Variant.
 
-	use Package::Variant
-		importing => ['MooX::Role' => ['late']],
-		subs      => [ qw(has with) ];
+   use Package::Variant
+      importing => ['MooX::Role' => ['late']],
+      subs      => [ qw(has with) ];
 
 =head1 BUGS
 
@@ -474,8 +463,7 @@ L<http://rt.cpan.org/Dist/Display.html?Queue=MooX-late>.
 =head1 SEE ALSO
 
 C<MooX::late> uses L<MooX::Types::MooseLike::Base> to check many type
-constraints. This is an optional dependency, but without it most type
-constraints are ignored.
+constraints.
 
 The following modules bring additional Moose functionality to Moo:
 
@@ -491,13 +479,12 @@ L<MooX::Augment> - support augment/inner
 
 =back
 
-If you have L<MooX> then you can import them all at once using:
-
-	use MooX qw( late Override Augment );
-
 L<MooX::HandlesVia|https://github.com/mattp-/MooX-HandlesVia> is also in
 development, and once released MooX::late may be able to use it to add
 a native-traits-like feature.
+
+L<MooX> allows you to load Moo plus multiple MooX extension modules in a
+single line.
 
 =head1 AUTHOR
 
