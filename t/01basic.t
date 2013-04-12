@@ -43,12 +43,10 @@ is($o2->foo, 'bar');
 is($o2->bar, 'foo');
 
 ok not eval {
-	require MooX::Types::MooseLike::Base;
 	Local::Class->new(foo => []);
 };
 
 ok not eval {
-	require MooX::Types::MooseLike::Base;
 	Local::Class->new(bar => []);
 };
 

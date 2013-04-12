@@ -107,7 +107,7 @@ sub import
 sub _process_isa
 {
 	my ($me, $name, $spec, $context) = @_;
-	$spec->{isa} = _fatal_type_constraint($spec->{isa}, $context);
+	$spec->{isa} = _type_constraint($spec->{isa}, $context);
 	return;
 }
 
@@ -218,158 +218,51 @@ sub _process_lazy_build
 		$_[0] =~ m{^ $type $op_union $type ( $op_union .* )? $}x;
 	}
 	
-	our $returned_empty_handed;
-	sub _empty_handed
-	{
-		$returned_empty_handed++;
-		
-		my $tc = shift;
-		return sub { 1 };
-	}
-	
-	my $warned = 0;
-	sub _get_simple_type_constraint
-	{
-		no strict 'refs';
-		
-		eval { require MooX::Types::MooseLike::Base }
-		or do {
-			carp "Use of isa => STRING requires MooX::Types::MooseLike::Base"
-				unless $warned++;
-			return _empty_handed($_[0]);
-		};
-		
-		my $tc = shift;
-		return {
-			ClassName => sub { is_module_name($_[0]) },
-			RoleName  => sub { is_module_name($_[0]) },
-			map {
-				$_ => \&{"MooX::Types::MooseLike::Base::is_$_"};
-			}
-			qw {
-				Any Item Undef Defined Value Bool Str Num Int
-				CodeRef RegexpRef GlobRef FileHandle Object
-				ArrayRef HashRef ScalarRef
-			}
-		}->{$tc} or _empty_handed($tc);
-	}
-
-	sub _get_type_constraint_union
-	{
-		my @tc =
-			grep defined,
-			map { _type_constraint($_) }
-			_parse_type_constraint_union($_[0]);
-		
-		return sub {
-			my $value = shift;
-			foreach my $x (@tc) {
-				return 1 if $x->($value);
-			}
-			return;
-		};
-	}
-	
-	sub _get_parameterized_type_constraint
-	{
-		my ($outer, $inner) = _parse_parameterized_type_constraint($_[0]);
-		$inner = _type_constraint($inner);
-		
-		if ($outer eq 'Maybe')
-		{
-			return sub { !defined($_[0]) or $inner->($_[0]) };
-		}
-		
-		if ($outer eq 'ScalarRef')
-		{
-			return sub {
-				return unless ref $_[0] eq 'SCALAR';
-				$inner->(${$_[0]});
-			};
-		}
-		
-		if ($outer eq 'ArrayRef')
-		{
-			return sub {
-				return unless ref $_[0] eq 'ARRAY';
-				foreach my $e (@{$_[0]}) {
-					$inner->($e) or return;
-				}
-				return 1;
-			};
-		}
-		
-		if ($outer eq 'HashRef')
-		{
-			return sub {
-				return unless ref $_[0] eq 'HASH';
-				foreach my $e (values %{$_[0]}) {
-					return unless $inner->($e);
-				}
-				return 1;
-			};
-		}
-		
-		return _empty_handed($_[0]);
-	}
-
 	sub _type_constraint
 	{
-		my $tc = shift;
+		my ($tc, $ctx) = @_;
 		$tc =~ s/(^\s+|\s+$)//g;
 		
-		$tc =~ /^(
+		if ($tc =~ /^(
 			Any|Item|Bool|Undef|Defined|Value|Str|Num|Int|
 			Ref|CodeRef|RegexpRef|GlobRef|FileHandle|Object|
 			ScalarRef|ArrayRef|HashRef|ClassName|RoleName
-		)$/x
-			and return _get_simple_type_constraint($1);
-		
-		_detect_type_constraint_union($tc)
-			and return _get_type_constraint_union($tc);
-		
-		_detect_parameterized_type_constraint($tc)
-			and return _get_parameterized_type_constraint($tc);
-		
-		is_module_name($tc)
-			and return sub { blessed($_[0]) and $_[0]->isa($tc) };
-		
-		return _empty_handed($tc);
-	}
-	
-	my %Cache;
-	sub _fatal_type_constraint
-	{
-		my ($tc_name, $context) = @_;
-		
-		$returned_empty_handed = 0;
-		my $tc = _type_constraint($tc_name);
-		
-		if ($returned_empty_handed) {
-			# Don't cache; don't inflate
-			my $warned;
-			return sub {
-				unless ($warned) {
-					carp "Type constraint '$tc_name' not fully enforced (defined at $context)";
-					$warned++;
-				}
-				$tc->($_[0]) or croak "value '$_[0]' is not a $tc_name";
-			}
+		)$/x)
+		{
+			require Types::Standard;
+			return $_ for grep defined, Types::Standard->meta->get_type($tc);
 		}
 		
-		my $fatal = (
-			$Cache{$tc_name} ||= sub {
-				$tc->($_[0]) or
-				croak "value '$_[0]' is not a $tc_name"
-			}
+		elsif (_detect_type_constraint_union($tc))
+		{
+			require Type::Utils;
+			my @tc = grep defined, map _type_constraint($_), _parse_type_constraint_union($tc);
+			return Type::Utils::union(\@tc);
+		}
+		
+		elsif (_detect_parameterized_type_constraint($tc))
+		{
+			my ($outer, $inner) = map _type_constraint($_), _parse_parameterized_type_constraint($tc);
+			return $outer->parameterize($inner);
+		}
+		
+		elsif (is_module_name($tc))
+		{
+			require Type::Utils;
+			Type::Utils::class_type({ class => $tc });
+		}
+		
+		require Type::Utils;
+		require Types::Standard;
+		my $warned = 0;
+		Type::Utils::declare(
+			Type::Utils::as( Types::Standard::Any() ),
+			Type::Utils::where(sub {
+				$warned ||=1+!! carp("Type constraint '$tc' not fully enforced (defined at $ctx)");
+				!!1;
+			}),
+			display_name => $tc,
 		);
-		
-		# For inflation
-		$Moo::HandleMoose::TYPE_MAP{$fatal} = sub {
-			Moose::Util::TypeConstraints::find_or_parse_type_constraint $tc_name
-		};
-		
-		return $fatal;
 	}
 }
 
@@ -415,9 +308,7 @@ Allows C<< isa => $string >> to work when defining attributes for all
 Moose's built-in type constraints (and assumes other strings are package
 names).
 
-This feature require L<MooX::Types::MooseLike::Base>. If you don't
-have it, you'll get a warning message and all your C<isa> checks will be
-no-ops.
+This feature requires L<Types::Standard>.
 
 =item 2.
 
@@ -462,8 +353,7 @@ L<http://rt.cpan.org/Dist/Display.html?Queue=MooX-late>.
 
 =head1 SEE ALSO
 
-C<MooX::late> uses L<MooX::Types::MooseLike::Base> to check many type
-constraints.
+C<MooX::late> uses L<Types::Standard> to check type constraints.
 
 The following modules bring additional Moose functionality to Moo:
 
@@ -479,9 +369,8 @@ L<MooX::Augment> - support augment/inner
 
 =back
 
-L<MooX::HandlesVia|https://github.com/mattp-/MooX-HandlesVia> is also in
-development, and once released MooX::late may be able to use it to add
-a native-traits-like feature.
+L<MooX::HandlesVia> provides a native-traits-like feature for Moo. There
+are plans afoot to add MooX::HandlesVia magic to MooX::late. 
 
 L<MooX> allows you to load Moo plus multiple MooX extension modules in a
 single line.
