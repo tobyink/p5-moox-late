@@ -57,3 +57,9 @@
 		item "Make MooX::Types::MooseLike::Base a required dependency (was optional)."^^Packaging;
 	].
 
+`MooX-late 0.009 cpan:TOBYINK`
+	issued  2013-04-15;
+	changeset [
+		item "Switch from MooX::Types::MooseLike::Base to Types::Standard."^^Update;
+	].
+
