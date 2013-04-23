@@ -63,3 +63,17 @@
 		item "Switch from MooX::Types::MooseLike::Base to Types::Standard."^^Update;
 	].
 
+`MooX-late 0.010 cpan:TOBYINK`
+	issued  2013-04-23;
+	changeset [
+		item [
+			a dcs:Bugfix;
+			label "Fix support for Maybe[`a] type constraint. (It was being interpreted as an object blessed into package 'Maybe'.)";
+			dcs:fixes [
+				dbug:reporter cpan:SHLOMIF;
+				dbug:affects `MooX-late 0.009 cpan:TOBYINK`;
+			];
+			dcs:thanks cpan:SHLOMIF;
+		];
+	].
+
