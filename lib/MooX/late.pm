@@ -226,7 +226,7 @@ sub _process_lazy_build
 		if ($tc =~ /^(
 			Any|Item|Bool|Undef|Defined|Value|Str|Num|Int|
 			Ref|CodeRef|RegexpRef|GlobRef|FileHandle|Object|
-			ScalarRef|ArrayRef|HashRef|ClassName|RoleName
+			ScalarRef|ArrayRef|HashRef|ClassName|RoleName|Maybe
 		)$/x)
 		{
 			require Types::Standard;
