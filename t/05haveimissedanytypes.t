@@ -33,6 +33,12 @@ my @types_to_check = qw(
 	Object
 );
 
+my @class_types_to_check = qw(
+	Local::Test1
+	Local::Test::Two
+	LocalTest3
+);
+
 my $count = 0;
 sub constraint_for
 {
@@ -57,7 +63,7 @@ for my $type (@types_to_check)
 	is("$got", "$type", "Type constraint returned for '$type' looks right.");
 }
 
-for my $type ("Local::Test1")
+for my $type (@class_types_to_check)
 {
 	my $got = constraint_for($type);	
 	isa_ok($got, "Type::Tiny::Class", "constraint_for('$type')");
