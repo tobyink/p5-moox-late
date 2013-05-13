@@ -1,3 +1,21 @@
+=pod
+
+=head1 PURPOSE
+
+Test that all Moose's built-in type constraints are correctly parsed.
+
+=head1 AUTHOR
+
+Toby Inkster E<lt>tobyink@cpan.orgE<gt>.
+
+=head1 COPYRIGHT AND LICENCE
+
+This software is copyright (c) 2013 by Toby Inkster.
+
+This is free software; you can redistribute it and/or modify it under
+the same terms as the Perl 5 programming language system itself.
+
+=cut
 
 use strict;
 use warnings;
@@ -31,6 +49,10 @@ my @types_to_check = qw(
 	GlobRef
 	FileHandle
 	Object
+	Int|ArrayRef[Int]
+	ArrayRef[Int|HashRef[Int]]
+	ArrayRef[HashRef[Int]|Int]
+	ArrayRef[HashRef[Int]]|Int
 );
 
 my @class_types_to_check = qw(
