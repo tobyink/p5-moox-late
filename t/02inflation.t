@@ -27,14 +27,19 @@ BEGIN {
 	has foo => (is => 'ro', isa => 'Str', default => 'foo');
 };
 
+my $isa = "Moo"->_constructor_maker_for("Local::Class")->all_attribute_specs->{foo}{isa};
+note explain($isa);
+
 ok not eval {
-	my $obj = Local::Class->new(foo => [])
+	my $obj = "Local::Class"->new(foo => [])
 };
 
 eval {
 	require Moose;
 	
-	my $foo = Local::Class->meta->get_attribute('foo');
+	my $foo = "Local::Class"->meta->get_attribute('foo');
+	note explain($foo->type_constraint);
+	
 	is(
 		$foo->type_constraint->name,
 		'Str',
