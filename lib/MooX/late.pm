@@ -89,8 +89,6 @@ sub import
 				my $spec = +{ %spec }; # shallow clone
 				$me->_process_isa($name, $spec, $context, $caller)
 					if exists $spec->{isa} && !ref $spec->{isa};
-				$me->_process_default($name, $spec, $context, $caller)
-					if exists $spec->{default} && !ref $spec->{default};
 				$me->_process_lazy_build($name, $spec, $context, $caller)
 					if exists $spec->{lazy_build} && $spec->{lazy_build};
 				
@@ -115,14 +113,6 @@ sub _process_isa
 		}
 	);
 	$spec->{isa} = $reg->lookup($spec->{isa});
-	return;
-}
-
-sub _process_default
-{
-	my ($me, $name, $spec, $context) = @_;
-	my $value = $spec->{default};
-	$spec->{default} = sub { $value };
 	return;
 }
 
@@ -201,6 +191,8 @@ This feature requires L<Types::Standard>.
 
 =item 2.
 
+B<< Retired feature: >> this is now built in to Moo.
+
 Allows C<< default => $non_reference_value >> to work when defining
 attributes.
 
@@ -214,7 +206,7 @@ Exports C<blessed> and C<confess> functions to your namespace.
 
 =back
 
-Four features. It is not the aim of C<MooX::late> to make every aspect of
+Three features. It is not the aim of C<MooX::late> to make every aspect of
 Moo behave exactly identically to Moose. It's just going after the low-hanging
 fruit. So it does four things right now, and I promise that future versions
 will never do more than seven.
