@@ -80,14 +80,14 @@ sub constraint_for
 
 for my $type (@types_to_check)
 {
-	my $got = constraint_for($type);	
+	my $got = constraint_for($type);
 	isa_ok($got, "Type::Tiny", "constraint_for('$type')");
 	is("$got", "$type", "Type constraint returned for '$type' looks right.");
 }
 
 for my $type (@class_types_to_check)
 {
-	my $got = constraint_for($type);	
+	my $got = constraint_for($type);
 	isa_ok($got, "Type::Tiny::Class", "constraint_for('$type')");
 	is($got->class, $type, "Type constraint returned for '$type' looks right.");
 }

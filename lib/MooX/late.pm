@@ -153,6 +153,12 @@ sub _process_lazy_build
 
 __END__
 
+=pod
+
+=encoding utf8
+
+=for stopwords superset MooX
+
 =head1 NAME
 
 MooX::late - easily translate Moose code to Moo
@@ -235,7 +241,7 @@ Type constraint strings are interpreted using L<Type::Parser>, using the
 type constraints defined in L<Types::Standard>. This provides a very slight
 superset of Moose's type constraint syntax and built-in type constraints.
 
-Any unrecognised string that looks like it might be a class name is
+Any unrecognized string that looks like it might be a class name is
 interpreted as a class type constraint.
 
 =head1 BUGS
