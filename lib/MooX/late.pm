@@ -52,6 +52,11 @@ BEGIN {
 	}
 };
 
+sub _processors
+{
+	qw( isa lazy_build traits );
+}
+
 sub import
 {
 	my $me = shift;
@@ -78,6 +83,8 @@ sub import
 	my $orig = $caller->can('has')  # lolcat
 		or croak "Could not locate 'has' function to alter";
 	
+	my @processors = $me->_processors;
+	
 	$install_tracked->(
 		$caller, has => sub
 		{
@@ -87,10 +94,13 @@ sub import
 			for my $name (ref $proto ? @$proto : $proto)
 			{
 				my $spec = +{ %spec }; # shallow clone
-				$me->_process_isa($name, $spec, $context, $caller)
-					if exists $spec->{isa} && !ref $spec->{isa};
-				$me->_process_lazy_build($name, $spec, $context, $caller)
-					if exists $spec->{lazy_build} && $spec->{lazy_build};
+				
+				for my $option (@processors)
+				{
+					next unless exists $spec->{$option};
+					my $handler = $me->can("_process_$option");
+					$handler->($me, $name, $spec, $context, $caller);
+				}
 				
 				$orig->($name, %$spec);
 			}
@@ -105,7 +115,10 @@ sub import
 my %registry;
 sub _process_isa
 {
-	my ($me, $name, $spec, $context, $class) = @_;
+	my $me = shift;
+	my ($name, $spec, $context, $class) = @_;
+	return if ref $spec->{isa};
+	
 	my $reg = (
 		$registry{$class} ||= do {
 			require MooX::late::TypeRegistry;
@@ -113,13 +126,15 @@ sub _process_isa
 		}
 	);
 	$spec->{isa} = $reg->lookup($spec->{isa});
+	
 	return;
 }
 
 sub _process_lazy_build
 {
-	my ($me, $name, $spec, $context) = @_;
-	delete $spec->{lazy_build};
+	my $me = shift;
+	my ($name, $spec) = @_;
+	return unless delete $spec->{lazy_build};
 	
 	$spec->{is}      ||= "ro";
 	$spec->{lazy}    ||= 1;
@@ -134,6 +149,86 @@ sub _process_lazy_build
 	{
 		$spec->{clearer}   ||= "clear_$name";
 		$spec->{predicate} ||= "has_$name";
+	}
+	
+	return;
+}
+
+sub _setup_handlesvia
+{
+	my $me = shift;
+	my ($name, $spec, $context, $class) = @_;
+	
+	eval "require MooX::HandlesVia"
+		or croak("Requires MooX::HandlesVia for attribute trait defined at $context");
+}
+
+sub _process_traits
+{
+	my $me = shift;
+	my ($name, $spec) = @_;
+	
+	my @new;
+	foreach my $trait (@{ $spec->{traits} || [] })
+	{
+		my $handler = $me->can("_process_traits__$trait");
+		croak "$me cannot process trait $trait" unless $handler;
+		push @new, $me->$handler(@_);
+	}
+	
+	$spec->{traits} = \@new;
+	
+	# Pass through MooX::HandlesVia
+	if ($spec->{handles_via})
+	{
+		require MooX::HandlesVia;
+		my ($name, %spec) = MooX::HandlesVia::process_has($name, %$spec);
+		%$spec = %spec;
+	}
+	
+	return;
+}
+
+sub _process_traits__Array
+{
+	my $me = shift;
+	my ($name, $spec, $context, $class) = @_;
+	$me->_setup_handlesvia(@_);
+	$spec->{handles_via} = "Data::Perl::Collection::Array::MooseLike";
+	return;
+}
+
+sub _process_traits__Hash
+{
+	my $me = shift;
+	my ($name, $spec, $context, $class) = @_;
+	$me->_setup_handlesvia(@_);
+	$spec->{handles_via} = "Data::Perl::Collection::Hash::MooseLike";
+	return;
+}
+
+sub _process_traits__Code
+{
+	my $me = shift;
+	my ($name, $spec, $context, $class) = @_;
+	$me->_setup_handlesvia(@_);
+	$spec->{handles_via} = "Data::Perl::Code";
+	
+	# Special handling for execute_method!
+	while (my ($k, $v) = each %{ $spec->{handles} })
+	{
+		next unless $v eq q(execute_method);
+		
+		# MooX::HandlesVia can't handle this right yet.
+		delete $spec->{handles}{$k};
+		
+		eval qq{
+			package ${class};
+			sub ${k} {
+				my \$self = shift;
+				return \$self->${name}->(\$self, \@_);
+			}
+		};
 	}
 	
 	return;
@@ -204,9 +299,19 @@ Allows C<< lazy_build => 1 >> to work when defining attributes.
 
 Exports C<blessed> and C<confess> functions to your namespace.
 
+=item 5.
+
+Handles certain attribute traits. Currently C<Hash>, C<Array> and C<Code>
+are supported. This feature requires L<MooX::HandlesVia>. 
+
+C<String>, C<Number>, C<Counter> and C<Bool> are unlikely to ever be
+supported because of internal implementation details of Moo. If you need
+another attribute trait to be supported, let me know and I will consider
+it.
+
 =back
 
-Three features. It is not the aim of C<MooX::late> to make every aspect of
+Four features. It is not the aim of C<MooX::late> to make every aspect of
 Moo behave exactly identically to Moose. It's just going after the low-hanging
 fruit. So it does four things right now, and I promise that future versions
 will never do more than seven.
@@ -245,6 +350,9 @@ L<http://rt.cpan.org/Dist/Display.html?Queue=MooX-late>.
 
 C<MooX::late> uses L<Types::Standard> to check type constraints.
 
+C<MooX::late> uses L<MooX::HandlesVia> to provide native attribute traits
+support.
+
 The following modules bring additional Moose functionality to Moo:
 
 =over
@@ -258,9 +366,6 @@ L<MooX::Override> - support override/super
 L<MooX::Augment> - support augment/inner
 
 =back
-
-L<MooX::HandlesVia> provides a native-traits-like feature for Moo. There
-are plans afoot to add MooX::HandlesVia magic to MooX::late. 
 
 L<MooX> allows you to load Moo plus multiple MooX extension modules in a
 single line.
