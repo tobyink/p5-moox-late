@@ -87,11 +87,11 @@ sub import
 			for my $name (ref $proto ? @$proto : $proto)
 			{
 				my $spec = +{ %spec }; # shallow clone
-				$me->_process_isa($name, $spec, $context)
+				$me->_process_isa($name, $spec, $context, $caller)
 					if exists $spec->{isa} && !ref $spec->{isa};
-				$me->_process_default($name, $spec, $context)
+				$me->_process_default($name, $spec, $context, $caller)
 					if exists $spec->{default} && !ref $spec->{default};
-				$me->_process_lazy_build($name, $spec, $context)
+				$me->_process_lazy_build($name, $spec, $context, $caller)
 					if exists $spec->{lazy_build} && $spec->{lazy_build};
 				
 				$orig->($name, %$spec);
@@ -104,10 +104,17 @@ sub import
 	$install_tracked->($caller, confess => \&Carp::confess);
 }
 
+my %registry;
 sub _process_isa
 {
-	my ($me, $name, $spec, $context) = @_;
-	$spec->{isa} = _type_constraint($spec->{isa}, $context);
+	my ($me, $name, $spec, $context, $class) = @_;
+	my $reg = (
+		$registry{$class} ||= do {
+			require MooX::late::TypeRegistry;
+			"MooX::late::TypeRegistry"->new(chained => $class);
+		}
+	);
+	$spec->{isa} = $reg->lookup($spec->{isa});
 	return;
 }
 
@@ -140,130 +147,6 @@ sub _process_lazy_build
 	}
 	
 	return;
-}
-
-# A bunch of stuff stolen from Moose::Util::TypeConstraints...
-{
-	my $valid_chars = qr{[\w:\.]};
-	my $type_atom   = qr{ (?>$valid_chars+) }x;
-	my $ws          = qr{ (?>\s*) }x;
-	my $op_union    = qr{ $ws \| $ws }x;
-	my ($type, $type_capture_parts, $type_with_parameter, $union, $any);
-	if ($] >= 5.010)
-	{
-		my $type_pattern    = q{  (?&type_atom)  (?: \[ (?&ws)  (?&any)  (?&ws) \] )? };
-		my $type_capture_parts_pattern   = q{ ((?&type_atom)) (?: \[ (?&ws) ((?&any)) (?&ws) \] )? };
-		my $type_with_parameter_pattern  = q{  (?&type_atom)      \[ (?&ws)  (?&any)  (?&ws) \]    };
-		my $union_pattern   = q{ (?&type) (?> (?: (?&op_union) (?&type) )+ ) };
-		my $any_pattern     = q{ (?&type) | (?&union) };
-		
-		my $defines = qr{(?(DEFINE)
-			(?<valid_chars>         $valid_chars)
-			(?<type_atom>           $type_atom)
-			(?<ws>                  $ws)
-			(?<op_union>            $op_union)
-			(?<type>                $type_pattern)
-			(?<type_capture_parts>  $type_capture_parts_pattern)
-			(?<type_with_parameter> $type_with_parameter_pattern)
-			(?<union>               $union_pattern)
-			(?<any>                 $any_pattern)
-		)}x;
-		
-		$type                = qr{ $type_pattern                $defines }x;
-		$type_capture_parts  = qr{ $type_capture_parts_pattern  $defines }x;
-		$type_with_parameter = qr{ $type_with_parameter_pattern $defines }x;
-		$union               = qr{ $union_pattern               $defines }x;
-		$any                 = qr{ $any_pattern                 $defines }x;
-	}
-	else
-	{
-		use re 'eval';
-		
-		$type                = qr{  $type_atom  (?: \[ $ws  (??{$any})  $ws \] )? }x;
-		$type_capture_parts  = qr{ ($type_atom) (?: \[ $ws ((??{$any})) $ws \] )? }x;
-		$type_with_parameter = qr{  $type_atom      \[ $ws  (??{$any})  $ws \]    }x;
-		$union               = qr{ $type (?> (?: $op_union $type )+ ) }x;
-		$any                 = qr{ $type | $union }x;
-	}
-	
-	sub _parse_parameterized_type_constraint {
-		{ no warnings 'void'; $any; }  # force capture of interpolated lexical
-		$_[0] =~ m{ $type_capture_parts }x;
-		return ( $1, $2 );
-	}
-	
-	sub _detect_parameterized_type_constraint {
-		{ no warnings 'void'; $any; }  # force capture of interpolated lexical
-		$_[0] =~ m{ ^ $type_with_parameter $ }x;
-	}
-	
-	sub _parse_type_constraint_union {
-		{ no warnings 'void'; $any; }  # force capture of interpolated lexical
-		my $given = shift;
-		my @rv;
-		while ( $given =~ m{ \G (?: $op_union )? ($type) }gcx ) {
-			push @rv => $1;
-		}
-		( pos($given) eq length($given) )
-		|| __PACKAGE__->_throw_error( "'$given' didn't parse (parse-pos="
-			. pos($given)
-			. " and str-length="
-			. length($given)
-			. ")" );
-		@rv;
-	}
-	
-	sub _detect_type_constraint_union {
-		{ no warnings 'void'; $any; }  # force capture of interpolated lexical
-		$_[0] =~ m{^ $type $op_union $type ( $op_union .* )? $}x;
-	}
-	
-	sub _type_constraint
-	{
-		my ($tc, $ctx) = @_;
-		$tc =~ s/(^\s+|\s+$)//g;
-		
-		if ($tc =~ /^(
-			Any|Item|Bool|Undef|Defined|Value|Str|Num|Int|
-			Ref|CodeRef|RegexpRef|GlobRef|FileHandle|Object|
-			ScalarRef|ArrayRef|HashRef|ClassName|RoleName|Maybe
-		)$/x)
-		{
-			require Types::Standard;
-			return $_ for grep defined, Types::Standard->meta->get_type($tc);
-		}
-		
-		elsif (_detect_type_constraint_union($tc))
-		{
-			require Type::Utils;
-			my @tc = grep defined, map _type_constraint($_), _parse_type_constraint_union($tc);
-			return Type::Utils::union(\@tc);
-		}
-		
-		elsif (_detect_parameterized_type_constraint($tc))
-		{
-			my ($outer, $inner) = map _type_constraint($_), _parse_parameterized_type_constraint($tc);
-			return $outer->parameterize($inner);
-		}
-		
-		elsif (is_module_name($tc))
-		{
-			require Type::Utils;
-			return Type::Utils::class_type({ class => $tc });
-		}
-		
-		require Type::Utils;
-		require Types::Standard;
-		my $warned = 0;
-		return Type::Utils::declare(
-			Type::Utils::as( Types::Standard::Any() ),
-			Type::Utils::where(sub {
-				$warned ||=1+!! carp("Type constraint '$tc' not fully enforced (defined at $ctx)");
-				!!1;
-			}),
-			display_name => $tc,
-		);
-	}
 }
 
 1;
@@ -345,6 +228,15 @@ Package::Variant.
    use Package::Variant
       importing => ['MooX::Role' => ['late']],
       subs      => [ qw(has with) ];
+
+=head2 Type constraints
+
+Type constraint strings are interpreted using L<Type::Parser>, using the
+type constraints defined in L<Types::Standard>. This provides a very slight
+superset of Moose's type constraint syntax and built-in type constraints.
+
+Any unrecognised string that looks like it might be a class name is
+interpreted as a class type constraint.
 
 =head1 BUGS
 

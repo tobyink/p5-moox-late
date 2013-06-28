@@ -1,7 +1,6 @@
 =head1 PURPOSE
 
-Check that we get warnings about unrecognisable type constraints, but only
-when a value is actually tested against the constraint.
+Check that we get error messages about unrecognisable type constraints.
 
 =head1 AUTHOR
 
@@ -19,32 +18,22 @@ the same terms as the Perl 5 programming language system itself.
 use strict;
 use warnings;
 
-use if !eval { require Test::Warn },
-	'Test::More', skip_all => 'requires Test::Warn';
-use Test::Warn;
 use Test::More;
 
-eval q {
+$@ = undef;
+ok !eval q {
 # line 1 "embedded"
 	package Foo;
 	use Moo;
 	use MooX::late;
 	has foo => (is => 'ro', isa => 'X Y Z', required => 0);
+	1;
 };
 
-# type constraint should not be checked, so no warning expected
-warnings_are {
-	my $foo = Foo->new();
-} [];
-
-# But this should warn
-warnings_like {
-	my $foo = Foo->new(foo => 1);
-} qr{Type constraint 'X Y Z' not fully enforced \(defined at embedded:4, package Foo\)};
-
-# But we shouldn't get the same warning again. Too much noise!
-warnings_are {
-	my $foo = Foo->new(foo => 1);
-} [];
+like(
+	$@,
+	qr{^Unexpected tail on type expression:  Y Z},
+	'error message looks ok',
+);
 
 done_testing;
