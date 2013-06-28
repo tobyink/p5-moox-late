@@ -6,7 +6,7 @@
 	readme_from       m`MooX::late`;
 	test_requires     p`Test::More 0.61`;
 	requires          p`Moo 1.000004`;
-	requires          p`Type::Registry 0.013_01`;
+	requires          p`Type::Registry 0.014`;
 	recommends        p`MooX`;
 .
 
