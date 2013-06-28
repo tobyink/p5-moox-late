@@ -1,5 +1,11 @@
 package MooX::late::TypeRegistry;
 
+use strict;
+use warnings;
+
+our $AUTHORITY = "cpan:TOBYINK";
+our $VERSION   = "0.012";
+
 use base "Type::Registry";
 
 # Preload with standard types

@@ -91,3 +91,9 @@
 		];
 	].
 
+`MooX-late 0.012 cpan:TOBYINK`
+	issued  2013-07-XX;
+	changeset [
+		item "Use Type::Registry/Type::Parser to translate strings to type constraint expressions."^^Update;
+	].
+
