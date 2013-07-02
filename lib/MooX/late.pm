@@ -52,9 +52,25 @@ BEGIN {
 	}
 };
 
-sub _processors
+# SUBCLASSING
+# This is a hook for people subclassing MooX::late.
+# It should be easy to tack on your own handlers
+# to the end of the list. A handler is only called
+# if exists($spec{$handler_name}) in the attribute
+# spec.
+# 
+sub _handlers
 {
 	qw( isa lazy_build traits );
+}
+
+# SUBCLASSING
+# Not really sure why you'd want to override
+# this.
+#
+sub _definition_context_class
+{
+	"MooX::late::DefinitionContext";
 }
 
 sub import
@@ -83,37 +99,66 @@ sub import
 	my $orig = $caller->can('has')  # lolcat
 		or croak "Could not locate 'has' function to alter";
 	
-	my @processors = $me->_processors;
+	my @handlers = $me->_handlers;
+	
+	# SUBCLASSING
+	# MooX::late itself does not provide a
+	# `_finalize_attribute` method. Your subclass
+	# can, in which case it will be called right
+	# before setting up the attribute.
+	# 
+	my $finalize = $me->can("_finalize_attribute");
 	
 	$install_tracked->(
 		$caller, has => sub
 		{
 			my ($proto, %spec) = @_;
-			my $context = "MooX::late::DefinitionContext"->new_from_caller(0);
+			my $context = $me->_definition_context_class->new_from_caller(0);
 			
 			for my $name (ref $proto ? @$proto : $proto)
 			{
 				my $spec = +{ %spec }; # shallow clone
 				
-				for my $option (@processors)
+				for my $option (@handlers)
 				{
 					next unless exists $spec->{$option};
-					my $handler = $me->can("_process_$option");
-					$handler->($me, $name, $spec, $context, $caller);
+					my $handler = $me->can("_handle_$option");
+					
+					# SUBCLASSING
+					# Note that handlers are called as methods, and
+					# get passed:
+					# 1. the attribute name
+					# 2. the attribute spec (hashref, modifiable)
+					# 3. a context object
+					# 4. the name of the caller class/role
+					#
+					$me->$handler($name, $spec, $context, $caller);
 				}
 				
+				$me->$finalize($name, $spec, $context, $caller) if $finalize;
 				$orig->($name, %$spec);
 			}
 			return;
 		},
 	);
 	
-	$install_tracked->($caller, blessed => \&Scalar::Util::blessed);
-	$install_tracked->($caller, confess => \&Carp::confess);
+	$me->_install_sugar($caller, $install_tracked);
+}
+
+# SUBCLASSING
+# This can be used to install additional functions
+# into the caller package.
+#
+sub _install_sugar
+{
+	my $me = shift;
+	my ($caller, $installer) = @_;
+	$installer->($caller, blessed => \&Scalar::Util::blessed);
+	$installer->($caller, confess => \&Carp::confess);
 }
 
 my %registry;
-sub _process_isa
+sub _handle_isa
 {
 	my $me = shift;
 	my ($name, $spec, $context, $class) = @_;
@@ -130,10 +175,10 @@ sub _process_isa
 	return;
 }
 
-sub _process_lazy_build
+sub _handle_lazy_build
 {
 	my $me = shift;
-	my ($name, $spec) = @_;
+	my ($name, $spec, $context, $class) = @_;
 	return unless delete $spec->{lazy_build};
 	
 	$spec->{is}      ||= "ro";
@@ -154,34 +199,35 @@ sub _process_lazy_build
 	return;
 }
 
-sub _setup_handlesvia
+sub _handle_traits
 {
 	my $me = shift;
 	my ($name, $spec, $context, $class) = @_;
 	
-	eval "require MooX::HandlesVia"
-		or croak("Requires MooX::HandlesVia for attribute trait defined at $context");
-}
-
-sub _process_traits
-{
-	my $me = shift;
-	my ($name, $spec) = @_;
-	
 	my @new;
 	foreach my $trait (@{ $spec->{traits} || [] })
 	{
-		my $handler = $me->can("_process_traits__$trait");
+		my $handler = $me->can("_handletrait_$trait");
 		croak "$me cannot process trait $trait" unless $handler;
+		
+		# SUBCLASSING
+		# There is a second level of handlers for traits.
+		# Just add a method called "_handletrait_Foo"
+		# and it will be called to handle the trait "Foo".
+		# These handlers should normally return the empty
+		# list, but may return a list of strings to add to
+		# a *new* traits arrayref.
+		#
 		push @new, $me->$handler(@_);
 	}
 	
 	$spec->{traits} = \@new;
 	
-	# Pass through MooX::HandlesVia
 	if ($spec->{handles_via})
 	{
-		require MooX::HandlesVia;
+		eval "require MooX::HandlesVia"
+			or croak("Requires MooX::HandlesVia for attribute trait defined at $context");
+		
 		my ($name, %spec) = MooX::HandlesVia::process_has($name, %$spec);
 		%$spec = %spec;
 	}
@@ -189,29 +235,31 @@ sub _process_traits
 	return;
 }
 
-sub _process_traits__Array
+sub _handletrait_Array
 {
 	my $me = shift;
 	my ($name, $spec, $context, $class) = @_;
-	$me->_setup_handlesvia(@_);
+	
 	$spec->{handles_via} = "Data::Perl::Collection::Array::MooseLike";
+	
 	return;
 }
 
-sub _process_traits__Hash
+sub _handletrait_Hash
 {
 	my $me = shift;
 	my ($name, $spec, $context, $class) = @_;
-	$me->_setup_handlesvia(@_);
+	
 	$spec->{handles_via} = "Data::Perl::Collection::Hash::MooseLike";
+	
 	return;
 }
 
-sub _process_traits__Code
+sub _handletrait_Code
 {
 	my $me = shift;
 	my ($name, $spec, $context, $class) = @_;
-	$me->_setup_handlesvia(@_);
+	
 	$spec->{handles_via} = "Data::Perl::Code";
 	
 	# Special handling for execute_method!
@@ -222,6 +270,7 @@ sub _process_traits__Code
 		# MooX::HandlesVia can't handle this right yet.
 		delete $spec->{handles}{$k};
 		
+		# ... so we handle it ourselves.
 		eval qq{
 			package ${class};
 			sub ${k} {
@@ -340,6 +389,11 @@ superset of Moose's type constraint syntax and built-in type constraints.
 
 Any unrecognized string that looks like it might be a class name is
 interpreted as a class type constraint.
+
+=head2 Subclassing
+
+MooX::late is designed to be reasonably easy to subclass. There are comments
+in the source code explaining hooks for extensibility.
 
 =head1 BUGS
 
