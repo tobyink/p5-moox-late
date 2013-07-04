@@ -1,3 +1,6 @@
+## TODO - consider merging this into Type::Tiny somewhere.
+## Perhaps as Type::Util::dwim_lookup($type, %opts)???
+
 package MooX::late::TypeRegistry;
 
 use strict;
