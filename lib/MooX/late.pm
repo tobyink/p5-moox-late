@@ -164,13 +164,8 @@ sub _handle_isa
 	my ($name, $spec, $context, $class) = @_;
 	return if ref $spec->{isa};
 	
-	my $reg = (
-		$registry{$class} ||= do {
-			require MooX::late::TypeRegistry;
-			"MooX::late::TypeRegistry"->new(chained => $class);
-		}
-	);
-	$spec->{isa} = $reg->lookup($spec->{isa});
+	require Type::Utils;
+	$spec->{isa} = Type::Utils::dwim_type($spec->{isa}, for => $class);
 	
 	return;
 }
