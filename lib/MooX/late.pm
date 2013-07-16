@@ -61,7 +61,7 @@ BEGIN {
 # 
 sub _handlers
 {
-	qw( isa lazy_build traits );
+	qw( isa coerce lazy_build traits );
 }
 
 # SUBCLASSING
@@ -166,6 +166,29 @@ sub _handle_isa
 	
 	require Type::Utils;
 	$spec->{isa} = Type::Utils::dwim_type($spec->{isa}, for => $class);
+	
+	return;
+}
+
+sub _handle_coerce
+{
+	my $me = shift;
+	my ($name, $spec, $context, $class) = @_;
+	
+	my $c = $spec->{coerce};
+	my $i = $spec->{isa};
+	
+	if (defined($c) and !ref($c) and $c == 1)
+	{
+		if (blessed($i) and $i->isa('Type::Tiny') and $i->has_coercion)
+		{
+			$spec->{coerce} = $i->coercion;
+		}
+		elsif (blessed($i) and $i->can('has_coercion') and $i->has_coercion and $i->can('coerce'))
+		{
+			$spec->{coerce} = sub { $i->coerce(@_) };
+		}
+	}
 	
 	return;
 }
@@ -353,11 +376,16 @@ supported because of internal implementation details of Moo. If you need
 another attribute trait to be supported, let me know and I will consider
 it.
 
+=item 6.
+
+Supports C<< coerce => 1 >> if the type constraint is a blessed object
+implementing L<Type::API::Constraint::Coercible>.
+
 =back
 
-Four features. It is not the aim of C<MooX::late> to make every aspect of
+Five features. It is not the aim of C<MooX::late> to make every aspect of
 Moo behave exactly identically to Moose. It's just going after the low-hanging
-fruit. So it does four things right now, and I promise that future versions
+fruit. So it does five things right now, and I promise that future versions
 will never do more than seven.
 
 =head2 Use in Moo::Roles
@@ -373,8 +401,8 @@ parameterized roles. MooX::late should work in roles built with
 Package::Variant.
 
    use Package::Variant
-      importing => ['MooX::Role' => ['late']],
-      subs      => [ qw(has with) ];
+      importing => [ qw( Moo::Role MooX::late ) ],
+      subs      => [ qw( has with ) ];
 
 =head2 Type constraints
 
