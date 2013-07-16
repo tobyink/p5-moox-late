@@ -189,7 +189,12 @@ sub _handle_coerce
 			$spec->{coerce} = sub { $i->coerce(@_) };
 		}
 	}
-	
+
+	if (defined($c) and !ref($c) and $c eq 0)
+	{
+		delete($spec->{coerce});
+	}
+
 	return;
 }
 
