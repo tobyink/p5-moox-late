@@ -105,7 +105,7 @@
 		item "Retire support for non-reference attribute defaults because Moo now does this natively."^^Removal;
 	].
 
-`MooX-late 0.013 cpan:TOBYINK`
+`MooX-late 0.014 cpan:TOBYINK`
 	issued  2013-07-16;
 	changeset [
 		item "Support `coerce => 1` for Type::Tiny type constraints and those providing a similar API."^^Addition;
