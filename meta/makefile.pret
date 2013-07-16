@@ -4,9 +4,11 @@
 	perl_version_from m`MooX::late`;
 	version_from      m`MooX::late`;
 	readme_from       m`MooX::late`;
-	test_requires     p`Test::More 0.61`;
-	requires          p`Moo 1.002000`;
-	requires          p`Type::Utils 0.015`;
+	test_requires     p`Test::More 0.96`;
+	test_requires     p`Test::Requires 0.06`;
+	requires          p`Moo 1.003000`;
+	requires          p`Type::Utils 0.016`;
 	recommends        p`MooX`;
+	recommends        p`MooX::HandlesVia 0.001004`;
 .
 

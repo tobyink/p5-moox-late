@@ -19,7 +19,7 @@ use strict;
 use warnings;
 use Test::More;
 
-use Test::Requires "MooX::HandlesVia";
+use Test::Requires { "MooX::HandlesVia" => "0.001004" };
 
 {
 	package Local::ThingyContainer;
