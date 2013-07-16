@@ -97,3 +97,11 @@
 		item "Use Type::Registry/Type::Parser to translate strings to type constraint expressions."^^Update;
 	].
 
+`MooX-late 0.013 cpan:TOBYINK`
+	issued  2013-07-16;
+	changeset [
+		item "Use Type::Utils::dwim_type to translate strings to type constraint expressions."^^Update;
+		item "Support Moose attribute traits using MooX::HandlesVia."^^Addition;
+		item "Retire support for non-reference attribute defaults because Moo now does this natively."^^Removal;
+	].
+
