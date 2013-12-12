@@ -61,7 +61,7 @@ BEGIN {
 # 
 sub _handlers
 {
-	qw( isa coerce lazy_build traits );
+	qw( isa does coerce lazy_build traits );
 }
 
 # SUBCLASSING
@@ -166,6 +166,18 @@ sub _handle_isa
 	
 	require Type::Utils;
 	$spec->{isa} = Type::Utils::dwim_type($spec->{isa}, for => $class);
+	
+	return;
+}
+
+sub _handle_does
+{
+	my $me = shift;
+	my ($name, $spec, $context, $class) = @_;
+	return unless defined $spec->{does};
+	
+	require Types::Standard;
+	$spec->{isa} = Types::Standard::ConsumerOf()->parameterize($spec->{does});
 	
 	return;
 }
@@ -386,9 +398,14 @@ it.
 Supports C<< coerce => 1 >> if the type constraint is a blessed object
 implementing L<Type::API::Constraint::Coercible>.
 
+=item 7.
+
+Supports C<< does => $rolename >> as a shortcut for
+C<< isa => "ConsumerOf['$rolename']" >>.
+
 =back
 
-Five features. It is not the aim of C<MooX::late> to make every aspect of
+Six features. It is not the aim of C<MooX::late> to make every aspect of
 Moo behave exactly identically to Moose. It's just going after the low-hanging
 fruit. So it does five things right now, and I promise that future versions
 will never do more than seven.
