@@ -7,7 +7,7 @@
 	:test-requirement        [ :on "Test::Requires 0.06"^^:CpanId ];
 	:test-requirement        [ :on "Test::Fatal 0.010"^^:CpanId ];
 	:runtime-requirement     [ :on "Moo 1.003000"^^:CpanId ];
-	:runtime-requirement     [ :on "Type::Utils 0.016"^^:CpanId ];
+	:runtime-requirement     [ :on "Type::Utils 1.000001"^^:CpanId ];
 	:runtime-suggestion      [ :on "MooX"^^:CpanId ];
 	:runtime-recommendation  [ :on "MooX::HandlesVia 0.001004"^^:CpanId ];
 .

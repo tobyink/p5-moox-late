@@ -64,7 +64,11 @@ my @class_types_to_check = qw(
 my $count = 0;
 sub constraint_for
 {
-	my $type  = shift;
+	my $type = shift;
+	
+	# Note that this will cause Local::Test1 to exist.
+	# We later use that in a @class_types_to_check test.
+	#
 	my $class = "Local::Test" . ++$count;
 	
 	eval qq{
@@ -73,7 +77,7 @@ sub constraint_for
 		use MooX::late;
 		has attr => (is => "ro", isa => "$type");
 		1;
-	} or die $@;
+	} or diag($@);
 	
 	"Moo"->_constructor_maker_for($class)->all_attribute_specs->{attr}{isa};
 }
@@ -89,7 +93,18 @@ for my $type (@class_types_to_check)
 {
 	my $got = constraint_for($type);
 	isa_ok($got, "Type::Tiny::Class", "constraint_for('$type')");
-	is($got->class, $type, "Type constraint returned for '$type' looks right.");
+	is($got && $got->class, $type, "Type constraint returned for '$type' looks right.");
+}
+
+{
+	my $type = 'ArrayRef[Local::Test1]';
+	my $got  = constraint_for($type);
+	isa_ok($got, "Type::Tiny", "constraint_for('$type')");
+	is(
+		$got && $got->type_parameter && $got->type_parameter->class,
+		"Local::Test1",
+		"Type constraint returned for '$type' looks right"
+	);
 }
 
 done_testing;
