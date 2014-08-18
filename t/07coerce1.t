@@ -35,13 +35,13 @@ is(
 	3,
 );
 
-like(
-	exception {
-		package Bar;
-		use Moo; use MooX::late;
-		has attr => (is => 'ro', isa => $Int->no_coercions, coerce => 1);
-	},
-	qr{^Invalid coerce '1'},
-);
+#like(
+#	exception {
+#		package Bar;
+#		use Moo; use MooX::late;
+#		has attr => (is => 'ro', isa => $Int->no_coercions, coerce => 1);
+#	},
+#	qr{^Invalid coerce '1'},
+#);
 
 done_testing;
