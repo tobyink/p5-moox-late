@@ -112,12 +112,18 @@
 	].
 
 `MooX-late 0.015 cpan:TOBYINK`
-	issued  2013-08-18;
+	issued  2014-08-18;
 	changeset [
 		item "Make the list of stuff this module does more concise."^^Documentation;
 		item "Drop support for `coerce => 1` because Moo 1.006000 supports this natively now."^^Removal;
 		item "Depend on Type::Utils 1.000001."^^Packaging;
 		item "Depend on Moo 1.006000."^^Packaging;
 		item "Improve test cases for class type constraints."^^Tests;
+	].
+
+`MooX-late 0.016 cpan:TOBYINK`
+	issued  2019-11-18;
+	changeset [
+		item "Get test suite passing and stuff."^^Tests;
 	].
 
